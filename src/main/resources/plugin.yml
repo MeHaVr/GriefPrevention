@@ -140,7 +140,7 @@ permissions:
         default: op
     griefprevention.transferclaim:
         description: Grants permission to use /transferclaim.
-        default: op
+        default: true
     griefprevention.ignoreclaims:
         description: Grants permission to use /ignoreclaims.
         default: op
