@@ -26,11 +26,13 @@ public class ClaimEnterListener implements Listener
     private static final UUID WILDERNESS = new UUID(0, 0);
 
     private final GriefPrevention      plugin;
+    private final ClaimFlagsStorage    flagsStorage;
     private final Map<UUID, UUID>      lastOwner = new ConcurrentHashMap<>();
 
-    public ClaimEnterListener(@NotNull GriefPrevention plugin)
+    public ClaimEnterListener(@NotNull GriefPrevention plugin, @NotNull ClaimFlagsStorage flagsStorage)
     {
-        this.plugin = plugin;
+        this.plugin       = plugin;
+        this.flagsStorage = flagsStorage;
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -49,6 +51,11 @@ public class ClaimEnterListener implements Listener
         UUID prev = lastOwner.get(player.getUniqueId());
         if (newOwner.equals(prev)) return;
         lastOwner.put(player.getUniqueId(), newOwner);
+
+        if (claim != null && flagsStorage.getFlag(claim.getID(), ClaimFlagsStorage.FLAG_PARTICLES))
+        {
+            ClaimParticleEffect.play(event.getTo(), flagsStorage.getParticleType(claim.getID()));
+        }
 
         Component bar;
         if (claim != null)

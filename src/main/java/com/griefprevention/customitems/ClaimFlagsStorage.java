@@ -17,12 +17,17 @@ public class ClaimFlagsStorage
     public static final String FLAG_EXPLOSIONS   = "explosions";
     public static final String FLAG_MOB_SPAWNING = "mobSpawning";
     public static final String FLAG_HOLOGRAM     = "hologram";
+    public static final String FLAG_PARTICLES    = "particles";
+
+    public static final String DEFAULT_PARTICLE_TYPE = "FLAME";
+    private static final String KEY_PARTICLE_TYPE = "particleType";
 
     private static final Map<String, Boolean> DEFAULTS = Map.of(
         FLAG_PVP,          false,
         FLAG_EXPLOSIONS,   false,
         FLAG_MOB_SPAWNING, true,
-        FLAG_HOLOGRAM,     true
+        FLAG_HOLOGRAM,     true,
+        FLAG_PARTICLES,    false
     );
 
     private static final int DEBOUNCE_TICKS = 40; // 2 Sekunden
@@ -31,6 +36,7 @@ public class ClaimFlagsStorage
     private final File             file;
     private final YamlConfiguration config;
     private final ConcurrentHashMap<Long, Map<String, Boolean>> cache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, String> particleTypeCache   = new ConcurrentHashMap<>();
     private final AtomicInteger pendingSaveTask = new AtomicInteger(-1);
 
     public ClaimFlagsStorage(@NotNull GriefPrevention plugin)
@@ -53,9 +59,23 @@ public class ClaimFlagsStorage
         scheduleSave();
     }
 
+    public @NotNull String getParticleType(long claimId)
+    {
+        return particleTypeCache.computeIfAbsent(claimId, id ->
+            config.getString(id + "." + KEY_PARTICLE_TYPE, DEFAULT_PARTICLE_TYPE));
+    }
+
+    public void setParticleType(long claimId, @NotNull String type)
+    {
+        particleTypeCache.put(claimId, type);
+        config.set(claimId + "." + KEY_PARTICLE_TYPE, type);
+        scheduleSave();
+    }
+
     public void removeClaim(long claimId)
     {
         cache.remove(claimId);
+        particleTypeCache.remove(claimId);
         config.set(String.valueOf(claimId), null);
         scheduleSave();
     }

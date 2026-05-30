@@ -213,3 +213,6 @@ permissions:
     griefprevention.crystals.admin:
         description: Grants access to /crystals admin (give, take, set).
         default: op
+    griefprevention.claim.particletype:
+        description: Grants access to change the particle type of a Claim Beacon.
+        default: op

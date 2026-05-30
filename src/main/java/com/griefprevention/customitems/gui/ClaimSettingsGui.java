@@ -19,18 +19,21 @@ import org.jetbrains.annotations.NotNull;
 /**
  * Einstellungs-Sub-GUI des Claim Beacons.
  *
- * Layout (27 Slots, 3 Reihen):
+ * Layout (36 Slots, 4 Reihen):
  *   R1: B   B   B   B   B   B   B   B   B
  *   R2: B  PVP  B  EXP  B  MOB  B  HOL  B
- *   R3: B   B   B   B   B   B   B   B  BCK
+ *   R3: B  PAR  B  TYP  B   B   B   B   B
+ *   R4: B   B   B   B   B   B   B   B  BCK
  */
 public class ClaimSettingsGui extends ClaimGui
 {
-    private static final int SLOT_PVP  = 10;
-    private static final int SLOT_EXPL = 12;
-    private static final int SLOT_MOB  = 14;
-    private static final int SLOT_HOL  = 16;
-    private static final int SLOT_BACK = 26;
+    private static final int SLOT_PVP      = 10;
+    private static final int SLOT_EXPL     = 12;
+    private static final int SLOT_MOB      = 14;
+    private static final int SLOT_HOL      = 16;
+    private static final int SLOT_PAR      = 19;
+    private static final int SLOT_PAR_TYPE = 21;
+    private static final int SLOT_BACK     = 35;
 
     private final GriefPrevention      plugin;
     private final ClaimBeaconStorage   storage;
@@ -50,7 +53,7 @@ public class ClaimSettingsGui extends ClaimGui
                             @NotNull Claim claim,
                             @NotNull Location beaconLoc)
     {
-        super(27, title("Einstellungen"));
+        super(36, title("Einstellungen"));
         this.plugin       = plugin;
         this.storage      = storage;
         this.holoManager  = holoManager;
@@ -122,6 +125,30 @@ public class ClaimSettingsGui extends ClaimGui
             "",
             "&8» &7&oKlicken zum " + (hol ? "Ausblenden." : "Einblenden."),
             "");
+
+        boolean par     = flagsStorage.getFlag(id, ClaimFlagsStorage.FLAG_PARTICLES);
+        double  parCost = prices != null ? prices.getPrice(ClaimFlagsStorage.FLAG_PARTICLES) : 0;
+        setItem(SLOT_PAR,
+            par ? Material.LIME_DYE : Material.RED_DYE,
+            par ? "&8» &a&lPartikel-Effekt &8• &aAktiv" : "&8» &c&lPartikel-Effekt &8• &cInaktiv",
+            "",
+            par ? "&8» &7Partikel-Ring beim Betreten des Claims." : "&8» &7Kein Effekt beim Betreten.",
+            "",
+            parCost > 0 ? "&8» &7Kosten&8: &b" + (long) parCost + " &7✦" : "&8» &7Kostenlos",
+            "",
+            "&8» &7&oKlicken zum " + (par ? "Deaktivieren." : "Aktivieren."),
+            "");
+
+        String  parType = flagsStorage.getParticleType(id);
+        String  parTypeName = ParticleSelectionGui.getLabel(parType);
+        setItem(SLOT_PAR_TYPE,
+            par ? Material.FIREWORK_STAR : Material.GRAY_DYE,
+            par ? "&8» &e&lPartikel-Typ &8• &7" + parTypeName : "&8» &8&lPartikel-Typ &8• &8Inaktiv",
+            "",
+            par ? "&8» &7Aktuell&8: &e" + parTypeName : "&8» &7Partikel erst aktivieren.",
+            "",
+            par ? "&8» &7&oKlicken zum Ändern." : "",
+            "");
     }
 
     @Override
@@ -156,6 +183,30 @@ public class ClaimSettingsGui extends ClaimGui
                 fill();
                 ClaimMessages.info(player,
                     "Hologram ist jetzt " + (newVal ? "&aSichtbar" : "&cAusgeblendet") + "&7.");
+            }
+
+            case SLOT_PAR  -> toggleFlag(player, isOwner, isAdmin,
+                ClaimFlagsStorage.FLAG_PARTICLES, "Partikel-Effekt");
+
+            case SLOT_PAR_TYPE ->
+            {
+                if (!isOwner && !isAdmin)
+                {
+                    ClaimMessages.error(player, "Nur der Besitzer kann den Partikel-Typ ändern.");
+                    return;
+                }
+                if (!flagsStorage.getFlag(claim.getID(), ClaimFlagsStorage.FLAG_PARTICLES))
+                {
+                    ClaimMessages.error(player, "Aktiviere zuerst den Partikel-Effekt.");
+                    return;
+                }
+                if (!player.hasPermission("griefprevention.claim.particletype") && !isAdmin)
+                {
+                    ClaimMessages.error(player, "Dein Rang erlaubt keine Partikel-Typ-Auswahl.");
+                    return;
+                }
+                new ParticleSelectionGui(plugin, storage, holoManager, flagsStorage,
+                    chunkStorage, listener, claim, beaconLoc).open(player);
             }
 
             case SLOT_BACK ->

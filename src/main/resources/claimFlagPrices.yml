@@ -1,0 +1,7 @@
+# Kosten (in Crystals) fuer das Umschalten von Claim-Flags.
+# 0 = kostenlos
+prices:
+  pvp: 50.0
+  explosions: 50.0
+  mobSpawning: 25.0
+  particles: 50.0

@@ -56,6 +56,8 @@ import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.profile.PlayerProfile;
 import org.bukkit.scheduler.BukkitTask;
+import net.kyori.adventure.audience.Audience;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -128,14 +130,8 @@ public class GriefPrevention extends JavaPlugin
     public int config_claims_maxClaimsPerPlayer;                    //maximum number of claims per player
     public boolean config_claims_villagerTradingRequiresTrust;      //whether trading with a claimed villager requires permission
 
-    public int config_claims_initialBlocks;                            //the number of claim blocks a new player starts with
-    public double config_claims_abandonReturnRatio;                 //the portion of claim blocks returned to a player when a claim is abandoned
-    public int config_claims_blocksAccruedPerHour_default;            //how many additional blocks players get each hour of play (can be zero) without any special permissions
-    public int config_claims_maxAccruedBlocks_default;                //the limit on accrued blocks (over time) for players without any special permissions.  doesn't limit purchased or admin-gifted blocks
     public int config_claims_minY;                                  //minimum Y coordinate claims can reach
     public int config_claims_expirationDays;                        //how many days of inactivity before a player loses his claims
-    public int config_claims_expirationExemptionTotalBlocks;        //total claim blocks amount which will exempt a player from claim expiration
-    public int config_claims_expirationExemptionBonusBlocks;        //bonus claim blocks amount which will exempt a player from claim expiration
 
     public int config_claims_automaticClaimsForNewPlayersRadius;    //how big automatic new player claims (when they place a chest) should be.  -1 to disable
     public int config_claims_automaticClaimsForNewPlayersRadiusMin; //how big automatic new player claims must be. 0 to disable
@@ -223,7 +219,6 @@ public class GriefPrevention extends JavaPlugin
     public PistonMode config_pistonMovement;                            //Setting for piston check options
     public boolean config_pistonExplosionSound;                     //whether pistons make an explosion sound when they get removed
 
-    public boolean config_advanced_fixNegativeClaimblockAmounts;    //whether to attempt to fix negative claim block amounts (some addons cause/assume players can go into negative amounts)
     public int config_advanced_claim_expiration_check_rate;            //How often GP should check for expired claims, amount in seconds
     public int config_advanced_offlineplayer_cache_days;            //Cache players who have logged in within the last x number of days
 
@@ -340,14 +335,6 @@ public class GriefPrevention extends JavaPlugin
         String dataMode = (this.dataStore instanceof FlatFileDataStore) ? "(File Mode)" : "(Database Mode)";
         AddLogEntry("Finished loading data " + dataMode + ".");
 
-        //unless claim block accrual is disabled, start the recurring per 10 minute event to give claim blocks to online players
-        //20L ~ 1 second
-        if (this.config_claims_blocksAccruedPerHour_default > 0)
-        {
-            DeliverClaimBlocksTask task = new DeliverClaimBlocksTask(null, this);
-            this.getServer().getScheduler().scheduleSyncRepeatingTask(this, task, 20L * 60 * 10, 20L * 60 * 10);
-        }
-
         //start recurring cleanup scan for unused claims belonging to inactive players
         FindUnusedClaimsTask task2 = new FindUnusedClaimsTask();
         this.getServer().getScheduler().scheduleSyncRepeatingTask(this, task2, 20L * 60, 20L * config_advanced_claim_expiration_check_rate);
@@ -379,6 +366,41 @@ public class GriefPrevention extends JavaPlugin
         //special interaction-related events
         pluginManager.registerEvents(new InteractionProtectionHandler(), this);
 
+        //custom claim items (Claim Beacon, Claim Crystal)
+        new com.griefprevention.customitems.ClaimDatabase(this);
+        com.griefprevention.customitems.ClaimBeaconStorage beaconStorage = new com.griefprevention.customitems.ClaimBeaconStorage(this);
+        beaconStorage.load();
+        com.griefprevention.customitems.ClaimHologramManager holoManager = new com.griefprevention.customitems.ClaimHologramManager(this);
+        holoManager.recreateAll(beaconStorage.getAll());
+        com.griefprevention.customitems.ClaimFlagsStorage  flagsStorage = new com.griefprevention.customitems.ClaimFlagsStorage(this);
+        new com.griefprevention.customitems.ClaimFlagPricesConfig(this);
+        com.griefprevention.customitems.ClaimChunkStorage  chunkStorage = new com.griefprevention.customitems.ClaimChunkStorage(this);
+        chunkStorage.load();
+        com.griefprevention.customitems.AntiDupeManager.init(this);
+        pluginManager.registerEvents(new com.griefprevention.customitems.gui.GuiManager(this), this);
+        pluginManager.registerEvents(new com.griefprevention.customitems.ClaimBeaconListener(this, beaconStorage, holoManager, flagsStorage, chunkStorage), this);
+        pluginManager.registerEvents(new com.griefprevention.customitems.ClaimCrystalListener(this, chunkStorage, beaconStorage), this);
+        pluginManager.registerEvents(new com.griefprevention.customitems.AntiDupeListener(this), this);
+        pluginManager.registerEvents(new com.griefprevention.customitems.ClaimFlagsListener(this, flagsStorage, chunkStorage), this);
+        pluginManager.registerEvents(new com.griefprevention.customitems.ClaimEnterListener(this, flagsStorage), this);
+
+        // Crystal Economy (Vault-kompatibel)
+        com.griefprevention.customitems.CrystalDatabase crystalDb = new com.griefprevention.customitems.CrystalDatabase(this);
+        if (getServer().getPluginManager().getPlugin("Vault") != null)
+        {
+            getServer().getServicesManager().register(
+                net.milkbowl.vault.economy.Economy.class,
+                new com.griefprevention.customitems.CrystalEconomy(this, crystalDb),
+                this,
+                org.bukkit.plugin.ServicePriority.Normal);
+            AddLogEntry("[Crystal] Vault Economy Provider registriert.");
+        }
+        if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null)
+        {
+            new com.griefprevention.customitems.CrystalPlaceholderExpansion(this, crystalDb).register();
+            AddLogEntry("[Crystal] PlaceholderAPI-Expansion registriert.");
+        }
+
         //cache offline players
         OfflinePlayer[] offlinePlayers = this.getServer().getOfflinePlayers();
         CacheOfflinePlayerNamesThread namesThread = new CacheOfflinePlayerNamesThread(offlinePlayers, this.playerNameToIDMap);
@@ -394,6 +416,10 @@ public class GriefPrevention extends JavaPlugin
         }
 
         setUpCommands();
+        // Unified /claim command – überschreibt GP-internen Handler
+        new com.griefprevention.customitems.ClaimCommand(this, beaconStorage, holoManager, flagsStorage, chunkStorage);
+        // Crystal-Befehle (/crystals)
+        new com.griefprevention.customitems.CrystalCommand(this, crystalDb);
 
         AddLogEntry("Boot finished.");
 
@@ -549,12 +575,6 @@ public class GriefPrevention extends JavaPlugin
         this.config_claims_preventNonPlayerCreatedPortals = config.getBoolean("GriefPrevention.Claims.PreventNonPlayerCreatedPortals", false);
         this.config_claims_enderPearlsRequireAccessTrust = config.getBoolean("GriefPrevention.Claims.EnderPearlsRequireAccessTrust", true);
         this.config_claims_raidTriggersRequireBuildTrust = config.getBoolean("GriefPrevention.Claims.RaidTriggersRequireBuildTrust", true);
-        this.config_claims_initialBlocks = config.getInt("GriefPrevention.Claims.InitialBlocks", 100);
-        this.config_claims_blocksAccruedPerHour_default = config.getInt("GriefPrevention.Claims.BlocksAccruedPerHour", 100);
-        this.config_claims_blocksAccruedPerHour_default = config.getInt("GriefPrevention.Claims.Claim Blocks Accrued Per Hour.Default", config_claims_blocksAccruedPerHour_default);
-        this.config_claims_maxAccruedBlocks_default = config.getInt("GriefPrevention.Claims.MaxAccruedBlocks", 80000);
-        this.config_claims_maxAccruedBlocks_default = config.getInt("GriefPrevention.Claims.Max Accrued Claim Blocks.Default", this.config_claims_maxAccruedBlocks_default);
-        this.config_claims_abandonReturnRatio = config.getDouble("GriefPrevention.Claims.AbandonReturnRatio", 1.0D);
         this.config_claims_automaticClaimsForNewPlayersRadius = config.getInt("GriefPrevention.Claims.AutomaticNewPlayerClaimsRadius", 4);
         this.config_claims_automaticClaimsForNewPlayersRadiusMin = Math.max(0, Math.min(this.config_claims_automaticClaimsForNewPlayersRadius,
                 config.getInt("GriefPrevention.Claims.AutomaticNewPlayerClaimsRadiusMinimum", 0)));
@@ -604,8 +624,6 @@ public class GriefPrevention extends JavaPlugin
 
         this.config_claims_chestClaimExpirationDays = config.getInt("GriefPrevention.Claims.Expiration.ChestClaimDays", 7);
         this.config_claims_expirationDays = config.getInt("GriefPrevention.Claims.Expiration.AllClaims.DaysInactive", 60);
-        this.config_claims_expirationExemptionTotalBlocks = config.getInt("GriefPrevention.Claims.Expiration.AllClaims.ExceptWhenOwnerHasTotalClaimBlocks", 10000);
-        this.config_claims_expirationExemptionBonusBlocks = config.getInt("GriefPrevention.Claims.Expiration.AllClaims.ExceptWhenOwnerHasBonusClaimBlocks", 5000);
         this.config_claims_allowTrappedInAdminClaims = config.getBoolean("GriefPrevention.Claims.AllowTrappedInAdminClaims", false);
 
         this.config_claims_maxClaimsPerPlayer = config.getInt("GriefPrevention.Claims.MaximumNumberOfClaimsPerPlayer", 0);
@@ -715,7 +733,6 @@ public class GriefPrevention extends JavaPlugin
         //optional database settings
         loadDatabaseSettings(config);
 
-        this.config_advanced_fixNegativeClaimblockAmounts = config.getBoolean("GriefPrevention.Advanced.fixNegativeClaimblockAmounts", true);
         this.config_advanced_claim_expiration_check_rate = config.getInt("GriefPrevention.Advanced.ClaimExpirationCheckRate", 60);
         this.config_advanced_offlineplayer_cache_days = config.getInt("GriefPrevention.Advanced.OfflinePlayer_cache_days", 90);
 
@@ -748,10 +765,6 @@ public class GriefPrevention extends JavaPlugin
         outConfig.set("GriefPrevention.Claims.ProtectHorses", this.config_claims_protectHorses);
         outConfig.set("GriefPrevention.Claims.ProtectDonkeys", this.config_claims_protectDonkeys);
         outConfig.set("GriefPrevention.Claims.ProtectLlamas", this.config_claims_protectLlamas);
-        outConfig.set("GriefPrevention.Claims.InitialBlocks", this.config_claims_initialBlocks);
-        outConfig.set("GriefPrevention.Claims.Claim Blocks Accrued Per Hour.Default", this.config_claims_blocksAccruedPerHour_default);
-        outConfig.set("GriefPrevention.Claims.Max Accrued Claim Blocks.Default", this.config_claims_maxAccruedBlocks_default);
-        outConfig.set("GriefPrevention.Claims.AbandonReturnRatio", this.config_claims_abandonReturnRatio);
         outConfig.set("GriefPrevention.Claims.AutomaticNewPlayerClaimsRadius", this.config_claims_automaticClaimsForNewPlayersRadius);
         outConfig.set("GriefPrevention.Claims.AutomaticNewPlayerClaimsRadiusMinimum", this.config_claims_automaticClaimsForNewPlayersRadiusMin);
         outConfig.set("GriefPrevention.Claims.ExtendIntoGroundDistance", this.config_claims_claimsExtendIntoGroundDistance);
@@ -762,8 +775,6 @@ public class GriefPrevention extends JavaPlugin
         outConfig.set("GriefPrevention.Claims.ModificationTool", this.config_claims_modificationTool.name());
         outConfig.set("GriefPrevention.Claims.Expiration.ChestClaimDays", this.config_claims_chestClaimExpirationDays);
         outConfig.set("GriefPrevention.Claims.Expiration.AllClaims.DaysInactive", this.config_claims_expirationDays);
-        outConfig.set("GriefPrevention.Claims.Expiration.AllClaims.ExceptWhenOwnerHasTotalClaimBlocks", this.config_claims_expirationExemptionTotalBlocks);
-        outConfig.set("GriefPrevention.Claims.Expiration.AllClaims.ExceptWhenOwnerHasBonusClaimBlocks", this.config_claims_expirationExemptionBonusBlocks);
         outConfig.set("GriefPrevention.Claims.AllowTrappedInAdminClaims", this.config_claims_allowTrappedInAdminClaims);
         outConfig.set("GriefPrevention.Claims.MaximumNumberOfClaimsPerPlayer", this.config_claims_maxClaimsPerPlayer);
         outConfig.set("GriefPrevention.Claims.VillagerTradingRequiresPermission", this.config_claims_villagerTradingRequiresTrust);
@@ -841,7 +852,6 @@ public class GriefPrevention extends JavaPlugin
         outConfig.set("GriefPrevention.UseBanCommand", this.config_ban_useCommand);
         outConfig.set("GriefPrevention.BanCommandPattern", this.config_ban_commandFormat);
 
-        outConfig.set("GriefPrevention.Advanced.fixNegativeClaimblockAmounts", this.config_advanced_fixNegativeClaimblockAmounts);
         outConfig.set("GriefPrevention.Advanced.ClaimExpirationCheckRate", this.config_advanced_claim_expiration_check_rate);
         outConfig.set("GriefPrevention.Advanced.OfflinePlayer_cache_days", this.config_advanced_offlineplayer_cache_days);
 
@@ -1185,22 +1195,10 @@ public class GriefPrevention extends JavaPlugin
                 return true;
             }
 
-            if (this.config_claims_abandonReturnRatio != 1.0D)
-            {
-                //adjust claim blocks
-                for (Claim claim : playerData.getClaims())
-                {
-                    playerData.setAccruedClaimBlocks(playerData.getAccruedClaimBlocks() - (int) Math.ceil((claim.getArea() * (1 - this.config_claims_abandonReturnRatio))));
-                }
-            }
-
-
             //delete them
             this.dataStore.deleteClaimsForPlayer(player.getUniqueId(), false);
 
-            //inform the player
-            int remainingBlocks = playerData.getRemainingClaimBlocks();
-            GriefPrevention.sendMessage(player, TextMode.Success, Messages.SuccessfulAbandon, String.valueOf(remainingBlocks));
+            GriefPrevention.sendMessage(player, TextMode.Success, Messages.SuccessfulAbandon);
 
             //revert any current visualization
             playerData.setVisibleBoundaries(null);
@@ -1856,20 +1854,14 @@ public class GriefPrevention extends JavaPlugin
             //load the target player's data
             PlayerData playerData = this.dataStore.getPlayerData(otherPlayer.getUniqueId());
             Vector<Claim> claims = playerData.getClaims();
-            GriefPrevention.sendMessage(player, TextMode.Instr, Messages.StartBlockMath,
-                    String.valueOf(playerData.getAccruedClaimBlocks()),
-                    String.valueOf((playerData.getBonusClaimBlocks() + this.dataStore.getGroupBonusBlocks(otherPlayer.getUniqueId()))),
-                    String.valueOf((playerData.getAccruedClaimBlocks() + playerData.getBonusClaimBlocks() + this.dataStore.getGroupBonusBlocks(otherPlayer.getUniqueId()))));
             if (!claims.isEmpty())
             {
                 GriefPrevention.sendMessage(player, TextMode.Instr, Messages.ClaimsListHeader);
                 for (int i = 0; i < playerData.getClaims().size(); i++)
                 {
                     Claim claim = playerData.getClaims().get(i);
-                    GriefPrevention.sendMessage(player, TextMode.Instr, getfriendlyLocationString(claim.getLesserBoundaryCorner()) + this.dataStore.getMessage(Messages.ContinueBlockMath, String.valueOf(claim.getArea())));
+                    GriefPrevention.sendMessage(player, TextMode.Instr, getfriendlyLocationString(claim.getLesserBoundaryCorner()));
                 }
-
-                GriefPrevention.sendMessage(player, TextMode.Instr, Messages.EndBlockMath, String.valueOf(playerData.getRemainingClaimBlocks()));
             }
 
             //drop the data we just loaded, if the player isn't online
@@ -1945,130 +1937,6 @@ public class GriefPrevention extends JavaPlugin
             this.dataStore.deleteClaimsForPlayer(null, true);  //null for owner id indicates an administrative claim
 
             GriefPrevention.AddLogEntry("Deleted all administrative claims.", CustomLogEntryTypes.AdminActivity);
-            return true;
-        }
-
-        //adjustbonusclaimblocks <player> <amount> or [<permission>] amount
-        else if (cmd.getName().equalsIgnoreCase("adjustbonusclaimblocks"))
-        {
-            //requires exactly two parameters, the other player or group's name and the adjustment
-            if (args.length != 2) return false;
-
-            //parse the adjustment amount
-            int adjustment;
-            try
-            {
-                adjustment = Integer.parseInt(args[1]);
-            }
-            catch (NumberFormatException numberFormatException)
-            {
-                return false;  //causes usage to be displayed
-            }
-
-            //if granting blocks to all players with a specific permission
-            if (args[0].startsWith("[") && args[0].endsWith("]"))
-            {
-                String permissionIdentifier = args[0].substring(1, args[0].length() - 1);
-                int newTotal = this.dataStore.adjustGroupBonusBlocks(permissionIdentifier, adjustment);
-
-                GriefPrevention.sendMessage(player, TextMode.Success, Messages.AdjustGroupBlocksSuccess, permissionIdentifier, String.valueOf(adjustment), String.valueOf(newTotal));
-                if (player != null)
-                    GriefPrevention.AddLogEntry(player.getName() + " adjusted " + permissionIdentifier + "'s bonus claim blocks by " + adjustment + ".");
-
-                return true;
-            }
-
-            //otherwise, find the specified player
-            OfflinePlayer targetPlayer = this.resolvePlayerByName(args[0]);
-
-            if (targetPlayer == null)
-            {
-                GriefPrevention.sendMessage(player, TextMode.Err, Messages.PlayerNotFound2);
-                return true;
-            }
-
-            //give blocks to player
-            PlayerData playerData = this.dataStore.getPlayerData(targetPlayer.getUniqueId());
-            playerData.setBonusClaimBlocks(playerData.getBonusClaimBlocks() + adjustment);
-            this.dataStore.savePlayerData(targetPlayer.getUniqueId(), playerData);
-
-            GriefPrevention.sendMessage(player, TextMode.Success, Messages.AdjustBlocksSuccess, targetPlayer.getName(), String.valueOf(adjustment), String.valueOf(playerData.getBonusClaimBlocks()));
-            if (player != null)
-                GriefPrevention.AddLogEntry(player.getName() + " adjusted " + targetPlayer.getName() + "'s bonus claim blocks by " + adjustment + ".", CustomLogEntryTypes.AdminActivity);
-
-            return true;
-        }
-
-        //adjustbonusclaimblocksall <amount>
-        else if (cmd.getName().equalsIgnoreCase("adjustbonusclaimblocksall"))
-        {
-            //requires exactly one parameter, the amount of adjustment
-            if (args.length != 1) return false;
-
-            //parse the adjustment amount
-            int adjustment;
-            try
-            {
-                adjustment = Integer.parseInt(args[0]);
-            }
-            catch (NumberFormatException numberFormatException)
-            {
-                return false;  //causes usage to be displayed
-            }
-
-            //for each online player
-            @SuppressWarnings("unchecked")
-            Collection<Player> players = (Collection<Player>) this.getServer().getOnlinePlayers();
-            StringBuilder builder = new StringBuilder();
-            for (Player onlinePlayer : players)
-            {
-                UUID playerID = onlinePlayer.getUniqueId();
-                PlayerData playerData = this.dataStore.getPlayerData(playerID);
-                playerData.setBonusClaimBlocks(playerData.getBonusClaimBlocks() + adjustment);
-                this.dataStore.savePlayerData(playerID, playerData);
-                builder.append(onlinePlayer.getName()).append(' ');
-            }
-
-            GriefPrevention.sendMessage(player, TextMode.Success, Messages.AdjustBlocksAllSuccess, String.valueOf(adjustment));
-            GriefPrevention.AddLogEntry("Adjusted all " + players.size() + "players' bonus claim blocks by " + adjustment + ".  " + builder, CustomLogEntryTypes.AdminActivity);
-
-            return true;
-        }
-
-        //setaccruedclaimblocks <player> <amount>
-        else if (cmd.getName().equalsIgnoreCase("setaccruedclaimblocks"))
-        {
-            //requires exactly two parameters, the other player's name and the new amount
-            if (args.length != 2) return false;
-
-            //parse the adjustment amount
-            int newAmount;
-            try
-            {
-                newAmount = Integer.parseInt(args[1]);
-            }
-            catch (NumberFormatException numberFormatException)
-            {
-                return false;  //causes usage to be displayed
-            }
-
-            //find the specified player
-            OfflinePlayer targetPlayer = this.resolvePlayerByName(args[0]);
-            if (targetPlayer == null)
-            {
-                GriefPrevention.sendMessage(player, TextMode.Err, Messages.PlayerNotFound2);
-                return true;
-            }
-
-            //set player's blocks
-            PlayerData playerData = this.dataStore.getPlayerData(targetPlayer.getUniqueId());
-            playerData.setAccruedClaimBlocks(newAmount);
-            this.dataStore.savePlayerData(targetPlayer.getUniqueId(), playerData);
-
-            GriefPrevention.sendMessage(player, TextMode.Success, Messages.SetClaimBlocksSuccess);
-            if (player != null)
-                GriefPrevention.AddLogEntry(player.getName() + " set " + targetPlayer.getName() + "'s accrued claim blocks to " + newAmount + ".", CustomLogEntryTypes.AdminActivity);
-
             return true;
         }
 
@@ -2378,15 +2246,7 @@ public class GriefPrevention extends JavaPlugin
             //delete it
             this.dataStore.deleteClaim(claim, true, false);
 
-            //adjust claim blocks when abandoning a top level claim
-            if (this.config_claims_abandonReturnRatio != 1.0D && claim.parent == null && claim.ownerID.equals(playerData.playerID))
-            {
-                playerData.setAccruedClaimBlocks(playerData.getAccruedClaimBlocks() - (int) Math.ceil((claim.getArea() * (1 - this.config_claims_abandonReturnRatio))));
-            }
-
-            //tell the player how many claim blocks he has left
-            int remainingBlocks = playerData.getRemainingClaimBlocks();
-            GriefPrevention.sendMessage(player, TextMode.Success, Messages.AbandonSuccess, String.valueOf(remainingBlocks));
+            GriefPrevention.sendMessage(player, TextMode.Success, Messages.AbandonSuccess);
 
             //revert any current visualization
             playerData.setVisibleBoundaries(null);
@@ -2732,6 +2592,18 @@ public class GriefPrevention extends JavaPlugin
 
         this.dataStore.close();
 
+        // Datenbankverbindung für Custom Claims schließen
+        com.griefprevention.customitems.ClaimDatabase claimDb = com.griefprevention.customitems.ClaimDatabase.getInstance();
+        if (claimDb != null) claimDb.close();
+
+        // Crystal Economy schließen
+        com.griefprevention.customitems.CrystalDatabase crystalDb = com.griefprevention.customitems.CrystalDatabase.getInstance();
+        if (crystalDb != null) crystalDb.close();
+        getServer().getServicesManager().unregisterAll(this);
+
+        // Anti-Dupe UUIDs sofort speichern
+        com.griefprevention.customitems.AntiDupeManager.saveNow();
+
         //dump any remaining unwritten log entries
         this.customLogger.WriteEntries();
 
@@ -2841,6 +2713,11 @@ public class GriefPrevention extends JavaPlugin
         sendMessage(player, color, message, delayInTicks);
     }
 
+    private static final String NORVEX_PREFIX =
+        "&#9BE1E3&lɴ&#9BE1E3&lᴏ&#77BAE6&lʀ&#5393E9&lᴠ&#2F6CEC&lᴇ&#0B45EF&lx &8» ";
+    private static final LegacyComponentSerializer HEX_SERIALIZER =
+        LegacyComponentSerializer.builder().character('&').hexColors().build();
+
     //sends a color-coded message to a player
     public static void sendMessage(@Nullable Player player, @NotNull ChatColor color, @Nullable String message)
     {
@@ -2853,7 +2730,8 @@ public class GriefPrevention extends JavaPlugin
         }
         else
         {
-            player.sendMessage(color + message);
+            String full = NORVEX_PREFIX + "&" + color.getChar() + message;
+            ((Audience) player).sendMessage(HEX_SERIALIZER.deserialize(full));
         }
     }
 
