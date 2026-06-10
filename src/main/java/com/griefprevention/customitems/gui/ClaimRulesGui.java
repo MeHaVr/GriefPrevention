@@ -22,7 +22,7 @@ public class ClaimRulesGui extends ClaimGui
 
     public ClaimRulesGui()
     {
-        super(36, title("Claim-Details", "Regeln"));
+        super(36, "rules", title("Claim-Details", "Regeln"));
         build();
     }
 

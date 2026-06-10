@@ -47,7 +47,7 @@ public class ClaimLookupGui extends ClaimGui
                            @NotNull List<Claim> claims,
                            int page)
     {
-        super(54, title("Admin", "Lookup: " + targetName));
+        super(54, "admin_lookup", title("Admin", "Lookup: " + targetName));
         this.plugin       = plugin;
         this.chunkStorage = chunkStorage;
         this.targetName   = targetName;

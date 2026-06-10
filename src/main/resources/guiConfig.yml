@@ -1,0 +1,49 @@
+# =====================================================================
+#  GUI-Hintergründe (ItemsAdder)
+# =====================================================================
+#  Für jedes GUI kann hier ein ItemsAdder Font-Image als Hintergrund
+#  eingetragen werden – wie beim Beacon-Bestätigungs-GUI.
+#
+#  So gehst du vor:
+#    1. Bild in ItemsAdder als Font-Image anlegen (namespace:bild_id)
+#    2. Hier beim gewünschten GUI unter "image" eintragen
+#    3. "offset" = Pixel-Verschiebung nach links (negativ), damit das
+#       Bild korrekt über dem Inventar liegt
+#    4. Server neu starten
+#
+#  Bleibt "image" leer, bekommt das GUI den normalen Text-Titel.
+# =====================================================================
+backgrounds:
+  beacon_confirm:        # Beacon platzieren – Ja/Nein (Buttons in der Hotbar)
+    image: "norvex-desing:testmenu_bg"
+    offset: -50
+  confirm:               # Allgemeines Ja/Nein-GUI (27 Slots)
+    image: ""
+    offset: -50
+  beacon_detail:         # Claim-Übersicht (Rechtsklick auf Beacon, 27 Slots)
+    image: ""
+    offset: -50
+  settings:              # Claim-Einstellungen / Flags (36 Slots)
+    image: ""
+    offset: -50
+  particle_selection:    # Partikel-Typ-Auswahl (27 Slots)
+    image: ""
+    offset: -50
+  rules:                 # Claim-Regeln (36 Slots)
+    image: ""
+    offset: -50
+  crystal_map:           # 3x3-Chunk-Karte (36 Slots)
+    image: ""
+    offset: -50
+  crystal_shop:          # Crystal-Shop (27 Slots)
+    image: ""
+    offset: -50
+  trust:                 # Mitglieder-Verwaltung (54 Slots)
+    image: ""
+    offset: -50
+  trust_level:           # Vertrauensstufen-Auswahl (27 Slots)
+    image: ""
+    offset: -50
+  admin_lookup:          # Admin: fremde Claims nachschlagen (54 Slots)
+    image: ""
+    offset: -50

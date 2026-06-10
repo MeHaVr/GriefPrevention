@@ -36,7 +36,7 @@ public class CrystalShopGui extends ClaimGui
 
     public CrystalShopGui(@NotNull Plugin plugin, @NotNull CrystalDatabase db, @NotNull Player player)
     {
-        super(27, TITLE_PREFIX + "Crystal Shop");
+        super(27, "crystal_shop", TITLE_PREFIX + "Crystal Shop");
         this.plugin = plugin;
         this.db     = db;
         this.player = player;

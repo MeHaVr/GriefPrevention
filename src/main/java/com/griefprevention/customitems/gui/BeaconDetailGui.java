@@ -63,7 +63,7 @@ public class BeaconDetailGui extends ClaimGui
                            @NotNull Claim claim,
                            @NotNull Location beaconLoc)
     {
-        super(27, title("Claim"));
+        super(27, "beacon_detail", title("Claim"));
         this.plugin       = plugin;
         this.storage      = storage;
         this.holoManager  = holoManager;

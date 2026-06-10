@@ -27,35 +27,19 @@ public abstract class ClaimGui implements InventoryHolder
     private static final LegacyComponentSerializer LEGACY_SECTION = LegacyComponentSerializer.legacySection();
 
     protected Inventory inventory;
-    private final boolean hideTitle;
 
-    protected ClaimGui(int size, @NotNull String title)
+    /**
+     * Erstellt das Inventar mit ItemsAdder-Hintergrund (falls in guiConfig.yml
+     * für den guiKey konfiguriert), sonst mit dem Fallback-Text-Titel.
+     */
+    protected ClaimGui(int size, @NotNull String guiKey, @NotNull String fallbackTitle)
     {
-        this.hideTitle = false;
         // §x§R§R§G§G§B§B-Format – von Minecraft 1.16+ nativ für Hex-Farben unterstützt
-        this.inventory = Bukkit.createInventory(this, size, LEGACY_SECTION.serialize(AMP_HEX.deserialize(title)));
+        String fallback = LEGACY_SECTION.serialize(AMP_HEX.deserialize(fallbackTitle));
+        GuiBackgroundConfig config = GuiBackgroundConfig.getInstance();
+        this.inventory = Bukkit.createInventory(this, size,
+            config != null ? config.buildTitle(guiKey, fallback) : fallback);
     }
-
-    /** Erstellt ein Inventar ohne sichtbaren Titel. */
-    protected ClaimGui(int size)
-    {
-        this.hideTitle = true;
-        this.inventory = Bukkit.createInventory(this, size, buildHideTitle());
-    }
-
-    private static String buildHideTitle()
-    {
-        try
-        {
-            var w = new dev.lone.itemsadder.api.FontImages.FontImageWrapper("norvex-desing:testmenu_bg");
-            if (w.exists())
-                return "§f" + w.applyPixelsOffset(-400);
-        }
-        catch (Exception | Error ignored) { }
-        return "⠀"; // Fallback: Braille-Space
-    }
-
-    public boolean isHideTitle() { return hideTitle; }
 
     @Override
     public final @NotNull Inventory getInventory() { return inventory; }

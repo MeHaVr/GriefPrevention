@@ -39,7 +39,7 @@ public class TrustLevelGui extends ClaimGui
                          @NotNull UUID targetUUID,
                          @NotNull String targetName)
     {
-        super(27, title("Stufe"));
+        super(27, "trust_level", title("Stufe"));
         this.plugin       = plugin;
         this.claim        = claim;
         this.chunkStorage = chunkStorage;

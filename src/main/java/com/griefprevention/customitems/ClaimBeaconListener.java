@@ -93,7 +93,7 @@ public class ClaimBeaconListener implements Listener
         // sonst entstehen Paket-Konflikte und das Inventar erscheint nicht.
         Bukkit.getScheduler().runTask(plugin, () ->
             new BeaconConfirmIaGui(
-                chunkX, chunkZ,
+                plugin,
                 () -> Bukkit.getScheduler().runTask(plugin, () ->
                     placeBeacon(player, world, x1, x2, y1, y2, z1, z2,
                         centerX, centerZ, placedY, chunkX, chunkZ)),

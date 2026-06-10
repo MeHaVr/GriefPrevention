@@ -53,7 +53,7 @@ public class ClaimSettingsGui extends ClaimGui
                             @NotNull Claim claim,
                             @NotNull Location beaconLoc)
     {
-        super(36, title("Einstellungen"));
+        super(36, "settings", title("Einstellungen"));
         this.plugin       = plugin;
         this.storage      = storage;
         this.holoManager  = holoManager;

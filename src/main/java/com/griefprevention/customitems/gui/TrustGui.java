@@ -59,7 +59,7 @@ public class TrustGui extends ClaimGui
                      @NotNull ClaimChunkStorage chunkStorage,
                      int page)
     {
-        super(54, title("Vertrauen"));
+        super(54, "trust", title("Vertrauen"));
         this.plugin       = plugin;
         this.claim        = claim;
         this.chunkStorage = chunkStorage;

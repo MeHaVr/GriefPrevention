@@ -56,7 +56,7 @@ public class ParticleSelectionGui extends ClaimGui
                                 @NotNull Claim claim,
                                 @NotNull Location beaconLoc)
     {
-        super(27, title("Einstellungen", "Partikel-Typ"));
+        super(27, "particle_selection", title("Einstellungen", "Partikel-Typ"));
         this.plugin       = plugin;
         this.storage      = storage;
         this.holoManager  = holoManager;

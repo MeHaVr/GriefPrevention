@@ -377,13 +377,8 @@ public class GriefPrevention extends JavaPlugin
         com.griefprevention.customitems.ClaimChunkStorage  chunkStorage = new com.griefprevention.customitems.ClaimChunkStorage(this);
         chunkStorage.load();
         com.griefprevention.customitems.AntiDupeManager.init(this);
+        com.griefprevention.customitems.gui.GuiBackgroundConfig.init(this);
         pluginManager.registerEvents(new com.griefprevention.customitems.gui.GuiManager(this), this);
-        if (getServer().getPluginManager().getPlugin("ProtocolLib") != null)
-        {
-            com.comphenix.protocol.ProtocolLibrary.getProtocolManager()
-                .addPacketListener(new com.griefprevention.customitems.gui.GuiPacketListener(this));
-            AddLogEntry("[GUI] ProtocolLib: Inventar-Titel-Unterdrückung aktiv.");
-        }
         pluginManager.registerEvents(new com.griefprevention.customitems.ClaimBeaconListener(this, beaconStorage, holoManager, flagsStorage, chunkStorage), this);
         pluginManager.registerEvents(new com.griefprevention.customitems.ClaimCrystalListener(this, chunkStorage, beaconStorage), this);
         pluginManager.registerEvents(new com.griefprevention.customitems.AntiDupeListener(this), this);
@@ -2588,6 +2583,9 @@ public class GriefPrevention extends JavaPlugin
 
     public void onDisable()
     {
+        // Offene GUIs schließen – stellt geleerte Spieler-Inventare wieder her
+        com.griefprevention.customitems.gui.GuiManager.closeAllOpen();
+
         //save data for any online players
         @SuppressWarnings("unchecked")
         Collection<Player> players = (Collection<Player>) this.getServer().getOnlinePlayers();

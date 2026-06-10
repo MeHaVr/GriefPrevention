@@ -26,7 +26,7 @@ public class ConfirmGui extends ClaimGui
                       @NotNull Runnable onConfirm,
                       @NotNull Runnable onCancel)
     {
-        super(27);
+        super(27, "confirm", title(guiName));
         this.onConfirm = onConfirm;
         this.onCancel  = onCancel;
         build(guiName);

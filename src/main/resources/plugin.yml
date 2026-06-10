@@ -2,7 +2,7 @@ name: NxClaim
 main: me.ryanhamshire.GriefPrevention.GriefPrevention
 description: 'Fork von GriefPrevention, angepasst für den Norvex-Server.'
 author: MehaVr
-softdepend: [Multiverse-Core, My_Worlds, MystCraft, Transporter, RoyalCommands, MultiWorld, Denizen, CommandHelper, DecentHolograms, Vault, PlaceholderAPI, ItemsAdder, ProtocolLib]
+softdepend: [Multiverse-Core, My_Worlds, MystCraft, Transporter, RoyalCommands, MultiWorld, Denizen, CommandHelper, DecentHolograms, Vault, PlaceholderAPI, ItemsAdder]
 version: '${git.commit.id.describe}'
 api-version: '1.21.11'
 commands:
@@ -106,7 +106,6 @@ permissions:
         children:
             griefprevention.ignoreclaims: true
             griefprevention.adminclaims: true
-            griefprevention.adjustclaimblocks: true
             griefprevention.deleteclaims: true
             griefprevention.spam: true
             griefprevention.lava: true

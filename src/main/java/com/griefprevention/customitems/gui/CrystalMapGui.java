@@ -88,7 +88,7 @@ public class CrystalMapGui extends ClaimGui
                           @NotNull ClaimBeaconStorage beaconStorage,
                           int viewCX, int viewCZ)
     {
-        super(36, title("Crystal-Karte"));
+        super(36, "crystal_map", title("Crystal-Karte"));
         this.plugin        = plugin;
         this.player        = player;
         this.viewCX        = viewCX;

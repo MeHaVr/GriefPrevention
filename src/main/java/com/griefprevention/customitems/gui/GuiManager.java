@@ -8,6 +8,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
@@ -76,6 +77,33 @@ public class GuiManager implements Listener
         UUID uuid = event.getPlayer().getUniqueId();
         pendingInputs.remove(uuid);
         cancelTimeout(uuid);
+        // Falls der Spieler mit offenem GUI disconnected ist und kein
+        // InventoryCloseEvent gefeuert wurde: Inventar-Backup einspielen.
+        InventoryBackup.restore(pluginInstance, event.getPlayer());
+    }
+
+    @EventHandler
+    public void onPlayerJoin(@NotNull PlayerJoinEvent event)
+    {
+        // Crash-Recovery: Wurde der Server beendet, während ein GUI das
+        // Inventar geleert hatte, liegt noch ein Backup auf Platte.
+        if (InventoryBackup.restore(pluginInstance, event.getPlayer()))
+            pluginInstance.getLogger().info("[GUI] Inventar von " + event.getPlayer().getName()
+                + " aus Backup wiederhergestellt.");
+    }
+
+    /**
+     * Schließt alle offenen ClaimGuis (löst onClose und damit die
+     * Inventar-Wiederherstellung aus). Wird beim Plugin-Shutdown aufgerufen.
+     */
+    public static void closeAllOpen()
+    {
+        if (pluginInstance == null) return;
+        for (Player player : pluginInstance.getServer().getOnlinePlayers())
+        {
+            if (player.getOpenInventory().getTopInventory().getHolder() instanceof ClaimGui)
+                player.closeInventory();
+        }
     }
 
     /** Registriert einen einmaligen Chat-Handler mit 60-Sekunden-Timeout. */
