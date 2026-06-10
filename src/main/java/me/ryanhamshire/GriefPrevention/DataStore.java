@@ -67,9 +67,6 @@ public abstract class DataStore
     //in-memory cache for player data
     protected ConcurrentHashMap<UUID, PlayerData> playerNameToPlayerDataMap = new ConcurrentHashMap<>();
 
-    //in-memory cache for group (permission-based) data
-    protected ConcurrentHashMap<String, Integer> permissionToBonusBlocksMap = new ConcurrentHashMap<>();
-
     //in-memory cache for claim data
     ArrayList<Claim> claims = new ArrayList<>();
     // claim id to claim cache
@@ -332,45 +329,6 @@ public abstract class DataStore
     {
         this.playerNameToPlayerDataMap.remove(playerID);
     }
-
-    //gets the number of bonus blocks a player has from his permissions
-    //Bukkit doesn't allow for checking permissions of an offline player.
-    //this will return 0 when he's offline, and the correct number when online.
-    synchronized public int getGroupBonusBlocks(UUID playerID)
-    {
-        Player player = GriefPrevention.instance.getServer().getPlayer(playerID);
-
-        if (player == null) return 0;
-
-        int bonusBlocks = 0;
-
-        for (Map.Entry<String, Integer> groupEntry : this.permissionToBonusBlocksMap.entrySet())
-        {
-            if (player.hasPermission(groupEntry.getKey()))
-            {
-                bonusBlocks += groupEntry.getValue();
-            }
-        }
-
-        return bonusBlocks;
-    }
-
-    //grants a group (players with a specific permission) bonus claim blocks as long as they're still members of the group
-    synchronized public int adjustGroupBonusBlocks(String groupName, int amount)
-    {
-        Integer currentValue = this.permissionToBonusBlocksMap.get(groupName);
-        if (currentValue == null) currentValue = 0;
-
-        currentValue += amount;
-        this.permissionToBonusBlocksMap.put(groupName, currentValue);
-
-        //write changes to storage to ensure they don't get lost
-        this.saveGroupBonusBlocks(groupName, currentValue);
-
-        return currentValue;
-    }
-
-    abstract void saveGroupBonusBlocks(String groupName, int amount);
 
     public class NoTransferException extends RuntimeException
     {
@@ -993,8 +951,6 @@ public abstract class DataStore
     //saves changes to player data to secondary storage.  MUST be called after you're done making changes, otherwise a reload will lose them
     public void savePlayerDataSync(UUID playerID, PlayerData playerData)
     {
-        //ensure player data is already read from file before trying to save
-        playerData.getAccruedClaimBlocks();
         playerData.getClaims();
 
         this.asyncSavePlayerData(playerID, playerData);
@@ -1198,28 +1154,6 @@ public abstract class DataStore
                 }
             }
 
-            //make sure player has enough blocks to make up the difference
-            if (!playerData.claimResizing.isAdminClaim() && player.getName().equals(playerData.claimResizing.getOwnerName()))
-            {
-                int newArea;
-                int blocksRemainingAfter;
-                try
-                {
-                    newArea = Math.multiplyExact(newWidth, newHeight);
-                    blocksRemainingAfter = playerData.getRemainingClaimBlocks() + (playerData.claimResizing.getArea() - newArea);
-                }
-                catch (ArithmeticException e)
-                {
-                    blocksRemainingAfter = Integer.MIN_VALUE + 1;
-                }
-
-                if (blocksRemainingAfter < 0)
-                {
-                    GriefPrevention.sendMessage(player, TextMode.Err, Messages.ResizeNeedMoreBlocks, String.valueOf(Math.abs(blocksRemainingAfter)));
-                    this.tryAdvertiseAdminAlternatives(player);
-                    return;
-                }
-            }
         }
 
         Claim oldClaim = playerData.claimResizing;
@@ -1248,33 +1182,7 @@ public abstract class DataStore
 
         if (result.succeeded && result.claim != null)
         {
-            //decide how many claim blocks are available for more resizing
-            int claimBlocksRemaining = 0;
-            if (!playerData.claimResizing.isAdminClaim())
-            {
-                UUID ownerID = playerData.claimResizing.ownerID;
-                if (playerData.claimResizing.parent != null)
-                {
-                    ownerID = playerData.claimResizing.parent.ownerID;
-                }
-                if (ownerID == player.getUniqueId())
-                {
-                    claimBlocksRemaining = playerData.getRemainingClaimBlocks();
-                }
-                else
-                {
-                    PlayerData ownerData = this.getPlayerData(ownerID);
-                    claimBlocksRemaining = ownerData.getRemainingClaimBlocks();
-                    OfflinePlayer owner = GriefPrevention.instance.getServer().getOfflinePlayer(ownerID);
-                    if (!owner.isOnline())
-                    {
-                        this.clearCachedPlayerData(ownerID);
-                    }
-                }
-            }
-
-            //inform about success, visualize, communicate remaining blocks available
-            GriefPrevention.sendMessage(player, TextMode.Success, Messages.ClaimResizeSuccess, String.valueOf(claimBlocksRemaining));
+            GriefPrevention.sendMessage(player, TextMode.Success, Messages.ClaimResizeSuccess, "");
             BoundaryVisualization.visualizeClaim(player, result.claim, VisualizationType.CLAIM);
 
             //if resizing someone else's claim, make a log entry
@@ -1311,20 +1219,11 @@ public abstract class DataStore
         }
     }
 
-    //educates a player about /adminclaims and /acb, if he can use them 
     public void tryAdvertiseAdminAlternatives(@NotNull Player player)
     {
-        if (player.hasPermission("griefprevention.adminclaims") && player.hasPermission("griefprevention.adjustclaimblocks"))
-        {
-            GriefPrevention.sendMessage(player, TextMode.Info, Messages.AdvertiseACandACB);
-        }
-        else if (player.hasPermission("griefprevention.adminclaims"))
+        if (player.hasPermission("griefprevention.adminclaims"))
         {
             GriefPrevention.sendMessage(player, TextMode.Info, Messages.AdvertiseAdminClaims);
-        }
-        else if (player.hasPermission("griefprevention.adjustclaimblocks"))
-        {
-            GriefPrevention.sendMessage(player, TextMode.Info, Messages.AdvertiseACB);
         }
     }
 
@@ -1452,8 +1351,6 @@ public abstract class DataStore
 
         public void run()
         {
-            //ensure player data is already read from file before trying to save
-            playerData.getAccruedClaimBlocks();
             playerData.getClaims();
             asyncSavePlayerData(this.playerID, this.playerData);
         }
