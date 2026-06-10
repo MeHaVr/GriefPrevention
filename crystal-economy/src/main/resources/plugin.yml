@@ -1,0 +1,22 @@
+name: CrystalEconomy
+main: com.norvex.crystaleconomy.CrystalEconomyPlugin
+version: 1.0.0
+api-version: '1.21'
+description: Crystal-Währungssystem für den Norvex-Server
+
+depend:
+  - Vault
+
+commands:
+  crystal:
+    description: Crystal-Währungsbefehle
+    usage: /<command> [balance|pay|top|admin]
+    permission: norvex.economy.use
+
+permissions:
+  norvex.economy.use:
+    description: Erlaubt die Nutzung von Crystal-Währungsbefehlen
+    default: true
+  norvex.economy.admin:
+    description: Erlaubt Admin-Wirtschaftsbefehle
+    default: op

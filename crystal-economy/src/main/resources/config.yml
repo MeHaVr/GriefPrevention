@@ -1,0 +1,9 @@
+# CrystalEconomy – Datenbankkonfiguration
+# Trage hier die MySQL-Verbindungsdaten ein.
+# Leer lassen → YAML-Fallback (crystalBalances.yml)
+database:
+  host: ""
+  port: 3307
+  name: economy
+  user: mc_user
+  password: ""
