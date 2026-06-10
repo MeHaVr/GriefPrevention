@@ -190,10 +190,13 @@ public class CrystalDatabase
         }
     }
 
-    private void upsertDb(@NotNull UUID uuid, double balance)
+    private void upsertDb(@NotNull UUID uuid)
     {
         async(() ->
         {
+            // Kontostand erst beim Schreiben aus dem Cache lesen: So überschreibt
+            // ein verspätet ausgeführter Task nie einen neueren Wert mit einem alten.
+            double balance = cache.getOrDefault(uuid, 0.0);
             try (Connection conn = pool.getConnection();
                  PreparedStatement ps = conn.prepareStatement(
                      "INSERT INTO crystal_balances (uuid, balance) VALUES (?, ?) " +
@@ -251,9 +254,11 @@ public class CrystalDatabase
     {
         if (yaml == null) yaml = new YamlConfiguration();
         yaml.set(uuid.toString(), balance);
+        // Snapshot synchron erstellen – YamlConfiguration ist nicht thread-safe.
+        String snapshot = yaml.saveToString();
         async(() ->
         {
-            try { yaml.save(yamlFile); }
+            try { java.nio.file.Files.writeString(yamlFile.toPath(), snapshot); }
             catch (IOException e)
             {
                 plugin.getLogger().warning("[Crystal] Fehler beim Speichern von crystalBalances.yml: " + e.getMessage());
@@ -332,7 +337,7 @@ public class CrystalDatabase
 
     private void persist(@NotNull UUID uuid, double balance)
     {
-        if (dbMode) upsertDb(uuid, balance);
+        if (dbMode) upsertDb(uuid);
         else        saveToYaml(uuid, balance);
     }
 
