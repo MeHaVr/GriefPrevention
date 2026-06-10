@@ -1219,14 +1219,6 @@ public abstract class DataStore
         }
     }
 
-    public void tryAdvertiseAdminAlternatives(@NotNull Player player)
-    {
-        if (player.hasPermission("griefprevention.adminclaims"))
-        {
-            GriefPrevention.sendMessage(player, TextMode.Info, Messages.AdvertiseAdminClaims);
-        }
-    }
-
     protected void loadMessages()
     {
         Messages[] messageIDs = Messages.values();

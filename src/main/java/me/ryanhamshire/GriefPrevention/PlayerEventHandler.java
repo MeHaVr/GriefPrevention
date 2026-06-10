@@ -71,7 +71,6 @@ import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
@@ -1305,12 +1304,6 @@ class PlayerEventHandler implements Listener
                 }
             }
         }
-    }
-
-    //when a player switches in-hand items
-    @EventHandler(ignoreCancelled = true)
-    public void onItemHeldChange(PlayerItemHeldEvent event)
-    {
     }
 
     //block use of buckets within other players' claims
