@@ -10,9 +10,20 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Spawnt jede Sekunde einen Partikel-Ring über platzierten Claim Beacons,
+ * sofern ein Spieler in der Nähe ist und das Partikel-Flag aktiv ist.
+ *
+ * Performance: Die Spieler-Positionen werden einmal pro Lauf und Welt
+ * eingesammelt; teure Claim-Lookups passieren nur für Beacons, bei denen
+ * tatsächlich ein Spieler in Reichweite steht.
+ */
 public class ClaimBeaconParticleTask extends BukkitRunnable
 {
     private static final double SPAWN_RADIUS_SQ = 48.0 * 48.0;
@@ -33,14 +44,19 @@ public class ClaimBeaconParticleTask extends BukkitRunnable
     @Override
     public void run()
     {
+        // Spieler-Positionen einmal pro Lauf einsammeln (statt pro Beacon)
+        Map<World, List<Location>> playersByWorld = new HashMap<>();
+
         for (Map.Entry<String, UUID> entry : beaconStorage.getAll().entrySet())
         {
             Location loc = parseKey(entry.getKey());
             if (loc == null) continue;
 
-            if (!hasNearbyPlayer(loc)) continue;
+            List<Location> players = playersByWorld.computeIfAbsent(loc.getWorld(),
+                ClaimBeaconParticleTask::collectPlayerLocations);
+            if (!hasNearbyPlayer(loc, players)) continue;
 
-            Claim claim = plugin.dataStore.getClaimAt(loc, false, null);
+            Claim claim = plugin.dataStore.getClaimAt(loc, true, null);
             if (claim == null) continue;
             if (!flagsStorage.getFlag(claim.getID(), ClaimFlagsStorage.FLAG_PARTICLES)) continue;
 
@@ -48,10 +64,18 @@ public class ClaimBeaconParticleTask extends BukkitRunnable
         }
     }
 
-    private static boolean hasNearbyPlayer(@NotNull Location loc)
+    private static @NotNull List<Location> collectPlayerLocations(@NotNull World world)
     {
-        for (Player p : loc.getWorld().getPlayers())
-            if (p.getLocation().distanceSquared(loc) <= SPAWN_RADIUS_SQ) return true;
+        List<Location> locations = new ArrayList<>();
+        for (Player p : world.getPlayers())
+            locations.add(p.getLocation());
+        return locations;
+    }
+
+    private static boolean hasNearbyPlayer(@NotNull Location loc, @NotNull List<Location> players)
+    {
+        for (Location p : players)
+            if (p.distanceSquared(loc) <= SPAWN_RADIUS_SQ) return true;
         return false;
     }
 

@@ -27,7 +27,7 @@ public class ClaimFlagsStorage
         FLAG_EXPLOSIONS,   false,
         FLAG_MOB_SPAWNING, true,
         FLAG_HOLOGRAM,     true,
-        FLAG_PARTICLES,    false
+        FLAG_PARTICLES,    true
     );
 
     private static final int DEBOUNCE_TICKS = 40; // 2 Sekunden
