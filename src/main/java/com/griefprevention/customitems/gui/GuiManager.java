@@ -5,6 +5,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -36,8 +37,17 @@ public class GuiManager implements Listener
         if (!(event.getInventory().getHolder() instanceof ClaimGui gui)) return;
         event.setCancelled(true);
         if (!(event.getWhoClicked() instanceof Player player)) return;
-        if (event.getRawSlot() < 0 || event.getRawSlot() >= event.getInventory().getSize()) return;
+        // Chest-Slots + Player-Inventar (27) + Hotbar (9) = chestSize + 36
+        if (event.getRawSlot() < 0 || event.getRawSlot() >= event.getInventory().getSize() + 36) return;
         gui.handleClick(event.getRawSlot(), player);
+    }
+
+    @EventHandler
+    public void onInventoryClose(@NotNull InventoryCloseEvent event)
+    {
+        if (!(event.getInventory().getHolder() instanceof ClaimGui gui)) return;
+        if (!(event.getPlayer() instanceof Player player)) return;
+        gui.onClose(player);
     }
 
     @EventHandler

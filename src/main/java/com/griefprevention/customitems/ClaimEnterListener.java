@@ -54,7 +54,7 @@ public class ClaimEnterListener implements Listener
 
         if (claim != null && flagsStorage.getFlag(claim.getID(), ClaimFlagsStorage.FLAG_PARTICLES))
         {
-            ClaimParticleEffect.play(event.getTo(), flagsStorage.getParticleType(claim.getID()));
+            ClaimParticleEffect.play(plugin, event.getTo(), flagsStorage.getParticleType(claim.getID()));
         }
 
         Component bar;

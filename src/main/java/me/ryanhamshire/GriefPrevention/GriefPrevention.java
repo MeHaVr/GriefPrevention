@@ -378,11 +378,19 @@ public class GriefPrevention extends JavaPlugin
         chunkStorage.load();
         com.griefprevention.customitems.AntiDupeManager.init(this);
         pluginManager.registerEvents(new com.griefprevention.customitems.gui.GuiManager(this), this);
+        if (getServer().getPluginManager().getPlugin("ProtocolLib") != null)
+        {
+            com.comphenix.protocol.ProtocolLibrary.getProtocolManager()
+                .addPacketListener(new com.griefprevention.customitems.gui.GuiPacketListener(this));
+            AddLogEntry("[GUI] ProtocolLib: Inventar-Titel-Unterdrückung aktiv.");
+        }
         pluginManager.registerEvents(new com.griefprevention.customitems.ClaimBeaconListener(this, beaconStorage, holoManager, flagsStorage, chunkStorage), this);
         pluginManager.registerEvents(new com.griefprevention.customitems.ClaimCrystalListener(this, chunkStorage, beaconStorage), this);
         pluginManager.registerEvents(new com.griefprevention.customitems.AntiDupeListener(this), this);
         pluginManager.registerEvents(new com.griefprevention.customitems.ClaimFlagsListener(this, flagsStorage, chunkStorage), this);
         pluginManager.registerEvents(new com.griefprevention.customitems.ClaimEnterListener(this, flagsStorage), this);
+        new com.griefprevention.customitems.ClaimBeaconParticleTask(this, beaconStorage, flagsStorage)
+            .runTaskTimer(this, 20L, 20L);
 
         // Crystal Economy (Vault-kompatibel)
         com.griefprevention.customitems.CrystalDatabase crystalDb = new com.griefprevention.customitems.CrystalDatabase(this);

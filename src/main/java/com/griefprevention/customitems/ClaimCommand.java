@@ -71,7 +71,7 @@ public class ClaimCommand implements TabExecutor
         {
             case "liste"     -> handleList(player);
             case "ignoriere" -> handleIgnoriere(player);
-            case "verlassen" -> handleVerlassen(player);
+            case "aufgeben"  -> handleAufgeben(player);
             case "transfer"  -> handleTransfer(player, args);
             case "visualize" -> handleVisualize(player);
             case "give"      -> handleGive(player, args);
@@ -117,7 +117,7 @@ public class ClaimCommand implements TabExecutor
             ClaimMessages.info(player, "Du respektierst wieder alle Claim-Schutzregeln.");
     }
 
-    private void handleVerlassen(@NotNull Player player)
+    private void handleAufgeben(@NotNull Player player)
     {
         Claim claim = plugin.dataStore.getClaimAt(player.getLocation(), false, null);
         if (claim == null)
@@ -442,7 +442,7 @@ public class ClaimCommand implements TabExecutor
     {
         ClaimMessages.info(player, "&b&lClaim&7-Befehle &8【 /claim &8】");
         ClaimMessages.info(player, "  &b/claim liste &8— &7Deine Claims anzeigen");
-        ClaimMessages.info(player, "  &b/claim verlassen &8— &7Aktuellen Claim aufgeben");
+        ClaimMessages.info(player, "  &b/claim aufgeben &8— &7Aktuellen Claim aufgeben");
         ClaimMessages.info(player, "  &b/claim transfer &e<spieler> &8— &7Claim übertragen");
         ClaimMessages.info(player, "  &b/claim visualize &8— &7Claim-Grenzen anzeigen");
         if (player.hasPermission(PERM_ADMIN))
@@ -476,7 +476,7 @@ public class ClaimCommand implements TabExecutor
 
         if (args.length == 1)
         {
-            List<String> subs = new ArrayList<>(Arrays.asList("liste", "verlassen", "transfer", "visualize"));
+            List<String> subs = new ArrayList<>(Arrays.asList("liste", "aufgeben", "transfer", "visualize"));
             if (player.hasPermission(PERM_ADMIN)) { subs.add("ignoriere"); subs.add("give"); subs.add("admin"); }
             return filter(subs, args[0]);
         }

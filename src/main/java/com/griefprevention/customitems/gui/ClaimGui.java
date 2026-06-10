@@ -26,18 +26,44 @@ public abstract class ClaimGui implements InventoryHolder
     // Serialisiert Component zurück in §-basierte Legacy-Strings für setDisplayName/setLore
     private static final LegacyComponentSerializer LEGACY_SECTION = LegacyComponentSerializer.legacySection();
 
-    protected final Inventory inventory;
+    protected Inventory inventory;
+    private final boolean hideTitle;
 
     protected ClaimGui(int size, @NotNull String title)
     {
+        this.hideTitle = false;
         // §x§R§R§G§G§B§B-Format – von Minecraft 1.16+ nativ für Hex-Farben unterstützt
         this.inventory = Bukkit.createInventory(this, size, LEGACY_SECTION.serialize(AMP_HEX.deserialize(title)));
     }
+
+    /** Erstellt ein Inventar ohne sichtbaren Titel. */
+    protected ClaimGui(int size)
+    {
+        this.hideTitle = true;
+        this.inventory = Bukkit.createInventory(this, size, buildHideTitle());
+    }
+
+    private static String buildHideTitle()
+    {
+        try
+        {
+            var w = new dev.lone.itemsadder.api.FontImages.FontImageWrapper("norvex-desing:testmenu_bg");
+            if (w.exists())
+                return "§f" + w.applyPixelsOffset(-400);
+        }
+        catch (Exception | Error ignored) { }
+        return "⠀"; // Fallback: Braille-Space
+    }
+
+    public boolean isHideTitle() { return hideTitle; }
 
     @Override
     public final @NotNull Inventory getInventory() { return inventory; }
 
     public abstract void handleClick(int slot, @NotNull Player player);
+
+    /** Wird von GuiManager aufgerufen wenn der Spieler das Inventar schließt. Standard: leer. */
+    public void onClose(@NotNull Player player) { }
 
     public void open(@NotNull Player player)
     {

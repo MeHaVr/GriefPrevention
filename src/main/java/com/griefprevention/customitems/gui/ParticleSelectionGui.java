@@ -65,20 +65,40 @@ public class ParticleSelectionGui extends ClaimGui
         this.listener     = listener;
         this.claim        = claim;
         this.beaconLoc    = beaconLoc;
-        build();
     }
 
-    private void build()
+    @Override
+    public void open(@NotNull Player player)
+    {
+        boolean isAdmin = player.hasPermission("griefprevention.claim.admin");
+        build(isAdmin || player.hasPermission(PERM_PARTICLE_TYPE));
+        super.open(player);
+    }
+
+    private static final String PERM_PARTICLE_TYPE = "griefprevention.claim.particletype";
+
+    private void build(boolean hasPermission)
     {
         String current = flagsStorage.getParticleType(claim.getID());
         for (ParticleOption opt : OPTIONS)
         {
             boolean selected = opt.particleKey().equals(current);
-            setItem(opt.slot(), opt.material(),
-                selected ? "&8» &a&l" + opt.label() : "&8» &e" + opt.label(),
-                "",
-                selected ? "&8» &a✔ Ausgewählt" : "&8» &7Klicken zum Auswählen.",
-                "");
+            if (!hasPermission)
+            {
+                setItem(opt.slot(), Material.GRAY_DYE,
+                    "&8» &8&l" + opt.label() + " &8• &cGesperrt",
+                    "",
+                    "&8» &7Benötigt einen höheren Rang.",
+                    "");
+            }
+            else
+            {
+                setItem(opt.slot(), opt.material(),
+                    selected ? "&8» &a&l" + opt.label() : "&8» &e" + opt.label(),
+                    "",
+                    selected ? "&8» &a✔ Ausgewählt" : "&8» &7Klicken zum Auswählen.",
+                    "");
+            }
         }
         setBackItem(SLOT_BACK, "Einstellungen");
         fill();
@@ -93,12 +113,19 @@ public class ParticleSelectionGui extends ClaimGui
                 chunkStorage, listener, claim, beaconLoc).open(player);
             return;
         }
+        boolean isAdmin = player.hasPermission("griefprevention.claim.admin");
+        boolean hasPermission = isAdmin || player.hasPermission(PERM_PARTICLE_TYPE);
         for (ParticleOption opt : OPTIONS)
         {
             if (opt.slot() == slot)
             {
+                if (!hasPermission)
+                {
+                    ClaimMessages.error(player, "Dein Rang erlaubt keine Partikel-Typ-Auswahl.");
+                    return;
+                }
                 flagsStorage.setParticleType(claim.getID(), opt.particleKey());
-                build();
+                build(true);
                 ClaimMessages.info(player, "Partikel-Typ auf &e" + opt.label() + " &7gesetzt.");
                 return;
             }

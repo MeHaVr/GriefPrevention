@@ -14,6 +14,7 @@ import org.jetbrains.annotations.NotNull;
  */
 public class ConfirmGui extends ClaimGui
 {
+    private static final int SLOT_TITLE   = 4;
     private static final int SLOT_CONFIRM = 14;
     private static final int SLOT_CANCEL  = 12;
 
@@ -25,14 +26,17 @@ public class ConfirmGui extends ClaimGui
                       @NotNull Runnable onConfirm,
                       @NotNull Runnable onCancel)
     {
-        super(27, title(guiName));
+        super(27);
         this.onConfirm = onConfirm;
         this.onCancel  = onCancel;
-        build();
+        build(guiName);
     }
 
-    private void build()
+    private void build(@NotNull String guiName)
     {
+        setItem(SLOT_TITLE, Material.NAME_TAG,
+            "&8» &f" + guiName);
+
         setItem(SLOT_CONFIRM, Material.LIME_CONCRETE,
             "&8» &a&l✔ BESTÄTIGEN",
             "",

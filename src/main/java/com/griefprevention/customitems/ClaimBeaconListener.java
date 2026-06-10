@@ -1,7 +1,7 @@
 package com.griefprevention.customitems;
 
+import com.griefprevention.customitems.gui.BeaconConfirmIaGui;
 import com.griefprevention.customitems.gui.BeaconDetailGui;
-import com.griefprevention.customitems.gui.ConfirmGui;
 import me.ryanhamshire.GriefPrevention.Claim;
 import me.ryanhamshire.GriefPrevention.CreateClaimResult;
 import me.ryanhamshire.GriefPrevention.GriefPrevention;
@@ -88,14 +88,17 @@ public class ClaimBeaconListener implements Listener
         // Sofort canceln – wir platzieren entweder gar nicht oder programmatisch
         event.setCancelled(true);
 
-        // Bestätigungs-GUI öffnen
-        new ConfirmGui(
-            "&8Chunk &e" + chunkX + "&8, &e" + chunkZ + " &8claimen&8?",
-            () -> Bukkit.getScheduler().runTask(plugin, () ->
-                placeBeacon(player, world, x1, x2, y1, y2, z1, z2,
-                    centerX, centerZ, placedY, chunkX, chunkZ)),
-            () -> {}   // Abbrechen: Beacon bleibt im Inventar
-        ).open(player);
+        // GUI 1 Tick verzögert öffnen: BlockPlaceEvent muss vollständig abgeschlossen sein
+        // bevor wir das Spieler-Inventar leeren und ein neues Inventar öffnen,
+        // sonst entstehen Paket-Konflikte und das Inventar erscheint nicht.
+        Bukkit.getScheduler().runTask(plugin, () ->
+            new BeaconConfirmIaGui(
+                chunkX, chunkZ,
+                () -> Bukkit.getScheduler().runTask(plugin, () ->
+                    placeBeacon(player, world, x1, x2, y1, y2, z1, z2,
+                        centerX, centerZ, placedY, chunkX, chunkZ)),
+                () -> {}
+            ).open(player));
     }
 
     private void placeBeacon(@NotNull Player player, @NotNull World world,

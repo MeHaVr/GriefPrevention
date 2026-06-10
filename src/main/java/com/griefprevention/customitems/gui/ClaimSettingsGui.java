@@ -145,9 +145,9 @@ public class ClaimSettingsGui extends ClaimGui
             par ? Material.FIREWORK_STAR : Material.GRAY_DYE,
             par ? "&8» &e&lPartikel-Typ &8• &7" + parTypeName : "&8» &8&lPartikel-Typ &8• &8Inaktiv",
             "",
-            par ? "&8» &7Aktuell&8: &e" + parTypeName : "&8» &7Partikel erst aktivieren.",
+            par ? "&8» &7Aktuell&8: &e" + parTypeName : "&8» &7Partikel inaktiv.",
             "",
-            par ? "&8» &7&oKlicken zum Ändern." : "",
+            "&8» &7&oKlicken zum Anzeigen.",
             "");
     }
 
@@ -193,16 +193,6 @@ public class ClaimSettingsGui extends ClaimGui
                 if (!isOwner && !isAdmin)
                 {
                     ClaimMessages.error(player, "Nur der Besitzer kann den Partikel-Typ ändern.");
-                    return;
-                }
-                if (!flagsStorage.getFlag(claim.getID(), ClaimFlagsStorage.FLAG_PARTICLES))
-                {
-                    ClaimMessages.error(player, "Aktiviere zuerst den Partikel-Effekt.");
-                    return;
-                }
-                if (!player.hasPermission("griefprevention.claim.particletype") && !isAdmin)
-                {
-                    ClaimMessages.error(player, "Dein Rang erlaubt keine Partikel-Typ-Auswahl.");
                     return;
                 }
                 new ParticleSelectionGui(plugin, storage, holoManager, flagsStorage,
